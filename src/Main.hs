@@ -90,9 +90,11 @@ getJob pgPool
       update "Sms"
         set status = 'processing',
             mtime  = statement_timestamp()
-        where status = 'new'
-          and ctime > statement_timestamp() - interval '20 minutes'
-        limit 1
+        where id in
+          (select id from "Sms"
+            where status = 'please-send'
+              and ctime > statement_timestamp() - interval '20 minutes'
+            limit 1)
         returning id, phone, sender, msgText
     |]
 
@@ -103,7 +105,7 @@ updateJob pgPool ident fIdent st
     [sql|
       update "Sms"
         set status    = ?,
-            mtime     = statement_timestamp()
+            mtime     = statement_timestamp(),
             foreignId = ?
         where id = ?
     |]

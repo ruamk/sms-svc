@@ -5,6 +5,7 @@ module Main where
 
 import           Control.Monad (forever, void)
 import           Control.Concurrent (threadDelay)
+import           Control.Exception (SomeException, catch)
 
 import           Data.Text (Text)
 import qualified Data.Text as T
@@ -58,7 +59,9 @@ loop conf pgPool = forever (catchAll go >> threadDelay (10^(5 :: Int)))
       [] -> return ()
       [msg@(msgId,_,_,_)] -> do
         syslog Info $ "Got job: " ++ show (msgId::Int)
-        sendSMS conf msg >>= \case
+        res <- sendSMS conf msg `catch` \e ->
+                return (Left $ show (e :: SomeException))
+        case res of
           Left err -> do
             syslog Error err
             updateJob pgPool msgId Nothing "error"
@@ -76,6 +79,8 @@ sendSMS conf (_, to, from, text) = do
   Just user <- Config.lookup conf "smsdirect.user"
   Just pass <- Config.lookup conf "smsdirect.pass"
   let cmd = submitMessage sender' phone' text Nothing
+
+  -- NB: smsdirect can throw network exception
   res <- smsdirect user pass cmd
   return $ case res of
     Left err           -> Left  $ "SMSDirect ErrorCode: " ++ show err
@@ -112,6 +117,5 @@ updateJob pgPool ident fIdent st
     (st, fIdent, ident)
 
 
--- TODO: catch & syslog
 catchAll :: IO () -> IO ()
-catchAll f = f
+catchAll f = f `catch` \e -> syslog Error $ show (e :: SomeException)

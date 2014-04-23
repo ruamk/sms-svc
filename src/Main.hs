@@ -17,7 +17,7 @@ import           Database.PostgreSQL.Simple.SqlQQ (sql)
 import           Data.Pool (Pool, createPool, withResource)
 import           System.Posix.Syslog
                   (withSyslog, syslog
-                  ,Option(PID,PERROR), Facility(USER), Priority(Info,Debug,Error))
+                  ,Option(PID), Facility(USER), Priority(Info,Debug,Error))
 import qualified System.Environment as Env
 
 import SMSDirect
@@ -28,7 +28,7 @@ main = do
   prog <- Env.getProgName
   Env.getArgs >>= \case
     [configPath] -> do
-      withSyslog prog [PID, PERROR] USER $ do
+      withSyslog prog [PID] USER $ do
         syslog Info $ "Loading config from " ++ configPath
         conf <- Config.load [Config.Required configPath]
 

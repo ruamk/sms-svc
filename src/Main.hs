@@ -17,7 +17,7 @@ import           Database.PostgreSQL.Simple.SqlQQ (sql)
 import           Data.Pool (Pool, createPool, withResource)
 import           System.Posix.Syslog
                   (withSyslog, syslog
-                  ,Option(PID,PERROR), Facility(USER), Priority(Info,Error))
+                  ,Option(PID,PERROR), Facility(USER), Priority(Info,Debug,Error))
 import qualified System.Environment as Env
 
 import SMSDirect
@@ -68,7 +68,7 @@ loop conf pgPool = forever (catchAll go >> threadDelay (10^(5 :: Int)))
           Right fMsgId -> do
             syslog Info $ "SMSDirect message id: " ++ show fMsgId
             updateJob pgPool msgId (Just fMsgId) "sent"
-      _ -> error "BUG"
+      res -> error $ "BUG: " ++ show res
 
 
 sendSMS :: Config -> (Int, Text, Text, Text) -> IO (Either String Text)
@@ -79,6 +79,8 @@ sendSMS conf (_, to, from, text) = do
   Just user <- Config.lookup conf "smsdirect.user"
   Just pass <- Config.lookup conf "smsdirect.pass"
   let cmd = submitMessage sender' phone' text Nothing
+
+  syslog Debug $ "Query:" ++ show (url user pass cmd)
 
   -- NB: smsdirect can throw network exception
   res <- smsdirect user pass cmd

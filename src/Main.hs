@@ -53,7 +53,7 @@ main = do
 
 
 loop :: Config -> Pool Pg.Connection -> IO ()
-loop conf pgPool = forever (catchAll go >> threadDelay (10^(5 :: Int)))
+loop conf pgPool = forever (catchAll go >> threadDelay (10^(6 :: Int)))
   where
     go = getJob pgPool >>= \case
       [] -> return ()

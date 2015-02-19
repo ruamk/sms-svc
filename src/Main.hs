@@ -7,6 +7,7 @@ import           Control.Monad (forever, void)
 import           Control.Concurrent (threadDelay)
 import           Control.Exception (SomeException, catch)
 
+import           Text.Printf
 import           Data.Text (Text)
 import qualified Data.Text as T
 import           Data.Configurator.Types (Config)
@@ -17,16 +18,22 @@ import           Database.PostgreSQL.Simple.SqlQQ (sql)
 import           Data.Pool (Pool, createPool, withResource)
 import           System.Posix.Syslog
                   (withSyslog, syslog
-                  ,Option(PID), Facility(USER), Priority(Info,Debug,Error))
+                  ,Option(..), Facility(USER), Priority(Info,Debug,Error))
 import qualified System.Environment as Env
 
-import SMSDirect
+import Network.Curl
+import Network.HTTP.Base (urlEncode)
 
 
 main :: IO ()
-main = do
+main = withCurlDo $ do
   prog <- Env.getProgName
   Env.getArgs >>= \case
+    "one-shot":args -> do
+      let [user, pass, from, to, text] = map T.pack args
+      withSyslog prog [PID,PERROR] USER
+        $ smsdirect user pass from to text >>= print
+
     [configPath] -> do
       withSyslog prog [PID] USER $ do
         syslog Info $ "Loading config from " ++ configPath
@@ -51,6 +58,18 @@ main = do
     _ -> error $ "Usage: " ++ prog ++ " <config.conf>"
 
 
+smsdirect :: Text -> Text -> Text -> Text -> Text -> IO (CurlCode, String)
+smsdirect login pass from to text
+  = syslog Debug ("SMSDirect query: " ++ url)
+  >> curlGetString url []
+  where
+    url = printf
+      "https://%s/submit_message?login=%s&pass=%s&from=%s&to=%s&text=%s"
+      ("www.smsdirect.ru" :: String)
+      (T.unpack login) (T.unpack pass)
+      (T.unpack from) (T.unpack $ T.dropWhile (== '+') to)
+      (urlEncode $ T.unpack text)
+
 
 loop :: Config -> Pool Pg.Connection -> IO ()
 loop conf pgPool = forever (catchAll go >> threadDelay (10^(6 :: Int)))
@@ -73,21 +92,12 @@ loop conf pgPool = forever (catchAll go >> threadDelay (10^(6 :: Int)))
 
 sendSMS :: Config -> (Int, Text, Text, Text) -> IO (Either String Text)
 sendSMS conf (_, to, from, text) = do
-  -- FIXME: EitherT
-  let Right sender' = SMSDirect.sender from
-  let Right phone'  = SMSDirect.phone  $ T.dropWhile (=='+') to
   Just user <- Config.lookup conf "smsdirect.user"
   Just pass <- Config.lookup conf "smsdirect.pass"
-  let cmd = submitMessage sender' phone' text Nothing
-
-  syslog Debug $ "Query:" ++ show (url user pass cmd)
-
-  -- NB: smsdirect can throw network exception
-  res <- smsdirect user pass cmd
-  return $ case res of
-    Left err           -> Left  $ "SMSDirect ErrorCode: " ++ show err
-    Right Nothing      -> Left  $ "SMSDirect returned no message id"
-    Right (Just msgId) -> Right $ T.pack $ show msgId
+  smsdirect user pass from to text >>= \case
+    (CurlOK, "")    -> return $ Left  $ "SMSDirect returned no message id"
+    (CurlOK, msgId) -> return $ Right $ T.pack msgId
+    err             -> return $ Left $ "SMSDirect ErrorCode: " ++ show err
 
 
 getJob :: Pool Pg.Connection -> IO [(Int,Text,Text,Text)]

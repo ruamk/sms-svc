@@ -10,7 +10,7 @@ API="http://en.wikipedia.org/w/api.php\
 &rawcontinue=\
 &generator=random\
 &grnnamespace=0"
-MSG=`curl -s "$API" | jq -r '.query.pages | to_entries[] | .value.extract'`
+MSG=`curl -L -s "$API" | jq -r '.query.pages | to_entries[] | .value.extract'`
 echo $MSG
 psql carma -c "insert into \"Sms\" (status, phone, msgtext) values \
   ('please-send', '$PHONE', \$XXX\$$MSG\$XXX\$)"

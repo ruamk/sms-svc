@@ -18,12 +18,16 @@ import           Database.PostgreSQL.Simple.SqlQQ (sql)
 import           Data.Pool (Pool, createPool, withResource)
 import           System.Posix.Syslog
                   (withSyslog, syslog
-                  ,Option(..), Facility(USER), Priority(Info,Debug,Error))
+                  ,Option(..), Facility(User), Priority(Info,Debug,Error))
 import qualified System.Environment as Env
+import           Foreign.C.String (withCStringLen)
 
 import Network.Curl
 import Network.HTTP.Base (urlEncode)
 
+
+loopDelay :: Int
+loopDelay = 10 ^ (6 :: Int)
 
 main :: IO ()
 main = withCurlDo $ do
@@ -31,12 +35,12 @@ main = withCurlDo $ do
   Env.getArgs >>= \case
     "one-shot":args -> do
       let [user, pass, from, to, text] = map T.pack args
-      withSyslog prog [PID,PERROR] USER
+      withSyslog prog [LogPID,Console] User
         $ smsdirect user pass from to text >>= print
 
-    [configPath] -> do
-      withSyslog prog [PID] USER $ do
-        syslog Info $ "Loading config from " ++ configPath
+    [configPath] ->
+      withSyslog prog [LogPID] User $ do
+        syslog' Info $ "Loading config from " ++ configPath
         conf <- Config.load [Config.Required configPath]
 
         Just host <- Config.lookup conf "pg.host"
@@ -45,14 +49,14 @@ main = withCurlDo $ do
         Just pwd  <- Config.lookup conf "pg.pass"
         Just db   <- Config.lookup conf "pg.db"
 
-        syslog Info $ "Connecting to Postgres on " ++ host
+        syslog' Info $ "Connecting to Postgres on " ++ host
         let cInfo = Pg.ConnectInfo host port user pwd db
         pgPool <- createPool (Pg.connect cInfo) Pg.close
             1 -- number of distinct sub-pools
             5 -- time for which an unused resource is kept open
             7 -- maximum number of resources to keep open
 
-        syslog Info "Starting loop"
+        syslog' Info "Starting loop"
         loop conf pgPool
 
     _ -> error $ "Usage: " ++ prog ++ " <config.conf>"
@@ -60,7 +64,7 @@ main = withCurlDo $ do
 
 smsdirect :: Text -> Text -> Text -> Text -> Text -> IO (CurlCode, String)
 smsdirect login pass from to text
-  = syslog Debug ("SMSDirect query: " ++ url)
+  = syslog' Debug ("SMSDirect query: " ++ url)
   >> curlGetString url []
   where
     url = printf
@@ -72,20 +76,20 @@ smsdirect login pass from to text
 
 
 loop :: Config -> Pool Pg.Connection -> IO ()
-loop conf pgPool = forever (catchAll go >> threadDelay (10^(6 :: Int)))
+loop conf pgPool = forever (catchAll go >> threadDelay loopDelay)
   where
     go = getJob pgPool >>= \case
       [] -> return ()
       [msg@(msgId,_,_,_)] -> do
-        syslog Info $ "Got job: " ++ show (msgId::Int)
+        syslog' Info $ "Got job: " ++ show (msgId::Int)
         res <- sendSMS conf msg `catch` \e ->
                 return (Left $ show (e :: SomeException))
         case res of
           Left err -> do
-            syslog Error err
+            syslog' Error err
             updateJob pgPool msgId Nothing "error"
           Right fMsgId -> do
-            syslog Info $ "SMSDirect message id: " ++ show fMsgId
+            syslog' Info $ "SMSDirect message id: " ++ show fMsgId
             updateJob pgPool msgId (Just fMsgId) "sent"
       res -> error $ "BUG: " ++ show res
 
@@ -95,7 +99,7 @@ sendSMS conf (_, to, from, text) = do
   Just user <- Config.lookup conf "smsdirect.user"
   Just pass <- Config.lookup conf "smsdirect.pass"
   smsdirect user pass from to text >>= \case
-    (CurlOK, "")    -> return $ Left  $ "SMSDirect returned no message id"
+    (CurlOK, "")    -> return $ Left "SMSDirect returned no message id"
     (CurlOK, msgId) -> return $ Right $ T.pack msgId
     err             -> return $ Left $ "SMSDirect ErrorCode: " ++ show err
 
@@ -130,4 +134,8 @@ updateJob pgPool ident fIdent st
 
 
 catchAll :: IO () -> IO ()
-catchAll f = f `catch` \e -> syslog Error $ show (e :: SomeException)
+catchAll f = f `catch` \e -> syslog' Error (show (e :: SomeException))
+
+
+syslog' :: Priority -> String -> IO ()
+syslog' p s = withCStringLen s $ syslog (Just User) p

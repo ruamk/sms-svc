@@ -1,0 +1,4 @@
+check process sms-svc with pidfile /var/run/carma-sms-svc.pid
+  start program = "/sbin/start carma-sms-svc"
+  stop program = "/sbin/stop carma-sms-svc"
+

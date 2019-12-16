@@ -1,0 +1,15 @@
+Source: carma-sms-svc
+Maintainer: Alexander Danilov <alexander.a.danilov@gmail.com>
+Priority: optional
+Section: carma
+Build-Depends: debhelper (>= 10),
+ haskell-stack (>= 1.4) | stack (>= 1.4),
+Standards-Version: 4.4.0
+
+Package: carma-sms-svc
+Architecture: any
+Section: misc
+Depends: ${misc:Depends},
+ ${shlibs:Depends},
+Description: CaRMa SMS gate service
+ SMS gate service for CaRMa system.

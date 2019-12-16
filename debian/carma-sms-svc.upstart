@@ -1,0 +1,14 @@
+description "CaRMa SMS gate service"
+
+start on (local-filesystems and runlevel [2345])
+stop on runlevel [016]
+respawn
+
+script
+ echo $$ > /var/run/carma-sms-svc.pid
+ exec /sbin/start-stop-daemon --start --chuid carma:carma --exec /usr/bin/carma-sms-svc -- /etc/carma/carma-sms-svc.conf
+end script
+
+post-stop script
+ rm -f /var/run/carma-sms-svc.pid
+end script

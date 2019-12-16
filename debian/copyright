@@ -1,0 +1,12 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: sms-svc
+Upstream-Contact: alexander.a.danilov@gmail.com
+Source: https://github.com/ruamk/sms-svc
+
+Files: *
+Copyright: (No copyright field in cabal file)
+License: MIT
+
+Files: debian/*
+Copyright: held by the contributors mentioned in debian/changelog
+License: MIT

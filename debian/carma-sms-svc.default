@@ -1,0 +1,10 @@
+# /etc/default/carma-sms-svc
+
+# Defaults for carma-sms-svc initscript.  This file is sourced by
+# /bin/sh from /etc/init.d/carma-sms-svc.
+
+# Set START to yes to start the carma-sms-svc
+START=yes
+
+# Options to pass to carma-sms-svc
+#CARMA_SMS_SVC_OPTS=

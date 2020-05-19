@@ -13,7 +13,7 @@ Section: misc
 Depends: ${misc:Depends},
  ${shlibs:Depends},
  lsb-base,
- carma-base (= 0.1)
+ carma-base (>= 0.1)
 Recommends: monit
 Description: CaRMa SMS gate service
  SMS gate service for CaRMa system.

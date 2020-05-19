@@ -4,7 +4,7 @@
 # /bin/sh from /etc/init.d/carma-sms-svc.
 
 # Set START to yes to start the carma-sms-svc
-START=yes
+START=no
 
 # Options to pass to carma-sms-svc
 #CARMA_SMS_SVC_OPTS=

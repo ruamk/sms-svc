@@ -28,7 +28,7 @@ PID="/run/carma/$NAME.pid"
 
 [ -f "/etc/default/$NAME" ] && . /etc/default/$NAME
 
-CARMA_SMS_SVC_OPTS="-c $CONFIG $CARMA_SMS_SVC_OPTS"
+CARMA_SMS_SVC_OPTS="$CONFIG $CARMA_SMS_SVC_OPTS"
 
 carma_sms_svc_not_configured () {
   if [ "$1" != "stop" ]
@@ -52,7 +52,7 @@ case "$1" in
   start)
     log_daemon_msg "Starting $DESC" "$NAME"
     carma_sms_svc_checks $1
-    if start-stop-daemon --start --quiet --oknodo --pidfile $PID --exec $DAEMON -- $CARMA_SMS_SVC_OPTS 1>/dev/null
+    if start-stop-daemon --start --background --quiet --oknodo --pidfile $PID --make-pidfile --exec $DAEMON -- $CARMA_SMS_SVC_OPTS 1>/dev/null
     then
       log_end_msg 0
     else
@@ -61,7 +61,7 @@ case "$1" in
     ;;
   stop)
     log_daemon_msg "Stopping $DESC" "$NAME"
-    if start-stop-daemon --retry TERM/5/KILL/5 --oknodo --stop --quiet --pidfile $PID 1>/dev/null
+    if start-stop-daemon --retry TERM/5/KILL/5 --stop --quiet --pidfile $PID --name $NAME
     then
       log_end_msg 0
     else

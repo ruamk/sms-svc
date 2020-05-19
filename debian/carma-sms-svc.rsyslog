@@ -1,0 +1,5 @@
+$FileCreateMode 0644                                                                                                                                                         
+### CaRMa write into our log. Clear syslog.                                                                                                                                  
+if $programname == 'carma-sms-svc' then /var/log/carma/carma-sms-svc.log                                                                                                                 
+&~                                                                                                                                                                           
+

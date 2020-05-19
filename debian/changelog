@@ -1,5 +1,6 @@
 carma-sms-svc (0.2.0.0-1ubuntu1) UNRELEASED; urgency=low
 
   * Add rsyslog conf file.
+  * Fix monit conf file.
 
  -- Alexander Danilov <alexander.a.danilov@gmail.com>  Tue, 19 May 2020 16:37:12 +0300

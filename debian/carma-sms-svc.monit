@@ -1,4 +1,4 @@
-check process carma-sms-svc with pidfile /run/carma-sms-svc.pid
+check process carma-sms-svc with pidfile /run/carma/carma-sms-svc.pid
   start program = "/usr/sbin/service carma-sms-svc start"
   stop program = "/usr/sbin/service carma-sms-svc stop"
 
